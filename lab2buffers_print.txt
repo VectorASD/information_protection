@@ -1,0 +1,104 @@
+Python 3.12.0 (tags/v3.12.0:0fb18b0, Oct  2 2023, 13:03:39) [MSC v.1935 64 bit (AMD64)] on win32
+Type "help", "copyright", "credits" or "license()" for more information.
+
+= RESTART: D:\Meow\Desktop\Учёба\ЗащитаИнформации\lab2buffers.py
+img.jpg prod/RSA_imgA.enc prod/RSA_imgA_dec.jpg
+file tell: 0
+file tell: 26718 0.10401153564453125 s.
+file tell: 0
+file tell: 53440 0.3500792980194092 s.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+img.jpg prod/RSA_imgB.enc prod/RSA_imgB_dec.jpg
+file tell: 0
+file tell: 26718 0.027005434036254883 s.
+file tell: 0
+file tell: 27648 1.919440746307373 s.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+img2.jpg prod/RSA_img2A.enc prod/RSA_img2A_dec.jpg
+file tell: 0
+file tell: 243933 0.8982117176055908 s.
+file tell: 0
+file tell: 487872 3.163907051086426 s.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+img2.jpg prod/RSA_img2B.enc prod/RSA_img2B_dec.jpg
+file tell: 0
+file tell: 243933 0.2090468406677246 s.
+file tell: 0
+file tell: 251904 17.447851419448853 s.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+img.jpg prod/Shamir_imgA.enc prod/Shamir_imgA_dec.jpg
+file tell: 0
+file tell: 26718 0.6381521224975586 s.
+file tell: 0
+file tell: 53440 0.6781611442565918 s.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+img.jpg prod/Shamir_imgB.enc prod/Shamir_imgB_dec.jpg
+file tell: 0
+file tell: 26718 3.8270604610443115 s.
+file tell: 0
+file tell: 27648 3.8358638286590576 s.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+img2.jpg prod/Shamir_img2A.enc prod/Shamir_img2A_dec.jpg
+file tell: 0
+file tell: 243933 5.799093008041382 s.
+file tell: 0
+file tell: 487872 6.13178563117981 s.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+img2.jpg prod/Shamir_img2B.enc prod/Shamir_img2B_dec.jpg
+file tell: 0
+file tell: 243933 34.763532876968384 s.
+file tell: 0
+file tell: 251904 34.93399930000305 s.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+img.jpg prod/GV_imgA.enc prod/GV_imgA_dec.jpg
+file tell: 0
+file tell: 26718 0.028006315231323242 s.
+file tell: 0
+file tell: 53440 0.019003868103027344 s.
+Counters: 6680 6680
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+img.jpg prod/GV_imgB.enc prod/GV_imgB_dec.jpg
+file tell: 0
+file tell: 26718 0.007000446319580078 s.
+file tell: 0
+file tell: 27648 0.007003068923950195 s.
+Counters: 216 216
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+img2.jpg prod/GV_img2A.enc prod/GV_img2A_dec.jpg
+file tell: 0
+file tell: 243933 0.20804762840270996 s.
+file tell: 0
+file tell: 487872 0.12602758407592773 s.
+Counters: 60984 60984
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+img2.jpg prod/GV_img2B.enc prod/GV_img2B_dec.jpg
+file tell: 0
+file tell: 243933 0.016003131866455078 s.
+file tell: 0
+file tell: 251904 0.011013269424438477 s.
+Counters: 1968 1968
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+img.jpg prod/ElGamal_imgA.enc prod/ElGamal_imgA_dec.jpg
+file tell: 0
+file tell: 26718 1.1002392768859863 s.
+file tell: 0
+file tell: 213760 0.4961214065551758 s.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+img.jpg prod/ElGamal_imgB.enc prod/ElGamal_imgB_dec.jpg
+file tell: 0
+file tell: 26718 5.977791786193848 s.
+file tell: 0
+file tell: 110592 2.8686556816101074 s.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+img2.jpg prod/ElGamal_img2A.enc prod/ElGamal_img2A_dec.jpg
+file tell: 0
+file tell: 243933 9.972445011138916 s.
+file tell: 0
+file tell: 1951488 4.456362724304199 s.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+img2.jpg prod/ElGamal_img2B.enc prod/ElGamal_img2B_dec.jpg
+file tell: 0
+file tell: 243933 54.36619973182678 s.
+file tell: 0
+file tell: 1007616 26.0935378074646 s.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
