@@ -93,12 +93,20 @@ class ShamirKey:
         x4 = mypow(x3, dB, p) # Боб посчитал, узнал содержимое
         return x4
     def coder(self, MPL, prefix):
-        return self.enc, self.dec, self.p.bit_length(), MPL, prefix, self.p, 1
+        return self.enc, self.dec, self.p.bit_length(), MPL, prefix, self.p, 1, self
     def save(self, name):
         with open(name, "wb") as file: pickle.dump((self.p, self.cA, self.dA, self.cB, self.dB), file)
         return self
     def load(self, name):
         with open(name, "rb") as file: self.p, self.cA, self.dA, self.cB, self.dB = pickle.load(file)
+        return self
+    def savePublic(self, stream):
+        stream.write(b"\0")
+        pickle.dump((self.p, self.cA, self.cB), stream)
+        return self
+    def loadPublic(self, stream):
+        self.p, self.cA, self.cB = pickle.load(stream)
+        self.dA = self.dB = None # потеряшка (выведена из строя функция dec)
         return self
     def print(self):
         print("~" * 77)
@@ -188,8 +196,12 @@ class ElGamalKey:
     def gen(self, bits):
         self.p = p = primeGen(bits) # общее
         self.g = g = primeGen(bits - 1) # общее. p > g
-        self.priv = priv = randint(0, p - 1) # только у Боба
+        self.priv = priv = randint(2, p - 1) # только у Боба
         self.pub = mypow(g, priv, p) # только у Боба
+        # для подписи
+        priv2 = randint(2, p - 1)
+        while Euclid(p - 1, priv2) != 1: priv2 = randint(2, p - 1)
+        self.priv2, self.pub2 = priv2, mypow(g, priv2, p)
         return self
     def enc(self, msg, _):
         p, g, pub = self.p, self.g, self.pub # Алиса запросила у Боба pub, она же полностью покрывает этот метод
@@ -203,22 +215,43 @@ class ElGamalKey:
         p = self.p
         return (mypow(r, p - 1 - self.priv, p) * e % p,) # Боб вскрыл сообщение
     def coder(self, MPL, prefix):
-        return self.enc, self.dec, self.p.bit_length(), MPL, prefix, self.p, 2
+        return self.enc, self.dec, self.p.bit_length(), MPL, prefix, self.p, 2, self
     def save(self, name):
-        with open(name, "wb") as file: pickle.dump((self.p, self.g, self.priv, self.pub), file)
+        with open(name, "wb") as file: pickle.dump((self.p, self.g, self.priv, self.pub, self.priv2, self.pub2), file)
         return self
     def load(self, name):
-        with open(name, "rb") as file: self.p, self.g, self.priv, self.pub = pickle.load(file)
+        with open(name, "rb") as file: self.p, self.g, self.priv, self.pub, self.priv2, self.pub2 = pickle.load(file)
+        return self
+    def savePublic(self, stream):
+        stream.write(b"\1")
+        pickle.dump((self.p, self.g, self.pub, self.pub2), stream)
+        return self
+    def loadPublic(self, stream):
+        self.p, self.g, self.pub, self.pub2 = pickle.load(stream)
+        self.priv = self.priv2 = None # потеряшка (выведена из строя функция dec)
         return self
     def print(self):
         print("~" * 77)
         print("pg:", self.p, "|", self.g, "\n")
         print("priv:", self.priv, "\n")
-        print("pub:", self.pub)
+        print("pub:", self.pub, "\n")
+        print("priv2:", self.priv2, "\n")
+        print("pub2:", self.pub2)
         print("~" * 77)
         return self
     def __eq__(self, op2):
         return self.p == op2.p and self.g == op2.g and self.priv == op2.priv and self.pub == op2.pub
+    def sign(self, msg):
+        p = self.p
+        u = (msg - self.priv * self.pub2) % (p - 1)
+        s = (Euclid_2(self.priv2, p - 1)[1] * u) % (p - 1)
+        return s
+    def unsign(self, s):
+        p = self.p
+        msg = mypow(self.pub, self.pub2, p) * mypow(self.pub2, s, p) % p
+        return msg # на самом деле это не msg, а mypow(self.g, msg, p)
+    def coder2(self, MPL, prefix):
+        return self.unsign, self.sign, self.p.bit_length(), MPL, prefix, self.p, 1, self
 
 def testElGamalKey():
     ElGamalKey().gen(64).print().save("keys/ElGamal64.key")
@@ -228,6 +261,8 @@ def testElGamalKey():
     msg = randint(0, sk2.p - 1)
     print(msg, "|", sk2.dec(*sk.enc(msg, None))[0])
     assert msg == sk.dec(*sk2.enc(msg, None))[0], "Проблемы кодирования/декодирования"
+#testElGamalKey()
+#exit()
 
 
 
@@ -420,12 +455,20 @@ class RSAkey:
     def enc(self, m): return mypow(m, self.exp, self.n)
     def dec(self, m): return mypow(m, self.d, self.n)
     def coder(self, MPL, prefix):
-        return self.enc, self.dec, self.n.bit_length(), MPL, prefix, self.n, 1
+        return self.enc, self.dec, self.n.bit_length(), MPL, prefix, self.n, 1, self
     def save(self, name):
         with open(name, "wb") as file: pickle.dump((self.p, self.q, self.n, self.f, self.exp, self.d), file)
         return self
     def load(self, name):
         with open(name, "rb") as file: self.p, self.q, self.n, self.f, self.exp, self.d = pickle.load(file)
+        return self
+    def savePublic(self, stream):
+        stream.write(b"\2")
+        pickle.dump((self.exp, self.n), stream)
+        return self
+    def loadPublic(self, stream):
+        self.exp, self.n = pickle.load(stream)
+        self.p = self.q = self.f = self.d = None # потеряшка (выведена из строя функция dec)
         return self
     def print(self):
         print("~" * 77)
@@ -451,6 +494,17 @@ def testRSAkey():
         assert msg == sk.dec(sk2.enc(msg)), "Проблемы кодирования/декодирования"
 
 
+
+
+
+registeredKeyLoaders ={}
+def loadPublicKey(stream):
+    n = stream.read(1)[0]
+    if n == 0: return ShamirKey().loadPublic(stream)
+    if n == 1: return ElGamalKey().loadPublic(stream)
+    if n == 2: return RSAkey().loadPublic(stream)
+    return registeredKeyLoaders[n](stream)
+def registerKeyLoader(n, loadPublicF): registeredKeyLoaders[n] = loadPublicF
 
 
 

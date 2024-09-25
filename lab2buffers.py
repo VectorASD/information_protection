@@ -41,6 +41,11 @@ class IOGenerator(io.RawIOBase):
       pos = pos2
     return pos
 
+def makeBuffer(gen, blockL, resL):
+  buff = io.BufferedReader(IOGenerator(gen, blockL), blockL)
+  buff.Length = resL
+  return buff
+
 """
 barr = bytearray(b"abcdefghijklmnopqrst" * 5000000)
 for i in range(20):
@@ -77,9 +82,7 @@ def data2chain(data, coder):
       ))
   it = iter(gen(data, coder))
   blockL, resL = next(it)
-  buff = io.BufferedReader(IOGenerator(it, blockL), blockL)
-  buff.Length = resL
-  return buff
+  return makeBuffer(it, blockL, resL)
 
 def chain2data(chain, coder):
   def gen(chain, blockL, prefix):
@@ -91,11 +94,9 @@ def chain2data(chain, coder):
       yield block[pL:].split(b"\0", 1)[1]
   blockL = (coder[2] + 5) // 8
   gen = gen(chain, blockL, coder[4])
-  buff = io.BufferedReader(IOGenerator(gen, blockL), blockL)
-  buff.Length = 0
-  return buff
+  return makeBuffer(gen, blockL, 0)
 
-def ECB(data, coder, dec = False):
+def ECB(data, coder, dec = False, invertor = False):
   def ECB(data, blockL, crypto):
     pos = 0
     while True:
@@ -113,12 +114,10 @@ def ECB(data, coder, dec = False):
         yield int.to_bytes(b, blockL, "big")
   blockL = (coder[2] + 5) // 8
   BPC = coder[6] # blocks per crypto
-  gen = (ECB_ElG if BPC == 2 else ECB)(data, blockL, coder[bool(dec)])
-  buff = io.BufferedReader(IOGenerator(gen, blockL), blockL)
-  buff.Length = data.Length
-  return buff
+  gen = (ECB_ElG if BPC == 2 else ECB)(data, blockL, coder[bool(dec) ^ bool(invertor)])
+  return makeBuffer(gen, blockL, data.Length)
 
-def CBC(data, impurity, coder, dec = False):
+def CBC(data, impurity, coder, dec = False, invertor = None):
   prevBlock = impurity
   def CBC(data, n, blockL, crypto):
     nonlocal prevBlock
@@ -154,17 +153,15 @@ def CBC(data, impurity, coder, dec = False):
       for b in encs: yield int.to_bytes(b, blockL, "big")
   blockL = (coder[2] + 5) // 8
   BPC = coder[6] # blocks per crypto
-  gen = (CBC_ElG if BPC == 2 else CBC)(data, coder[5], blockL, coder[bool(dec)])
-  buff = io.BufferedReader(IOGenerator(gen, blockL), blockL)
-  buff.Length = data.Length
-  return buff
+  gen = (CBC_ElG if BPC == 2 else CBC)(data, coder[5], blockL, coder[bool(dec) ^ bool(invertor)])
+  return makeBuffer(gen, blockL, data.Length)
 
 
 
 
 
 class Wrapper:
-  def __init__(self, data, coder = None):
+  def __init__(self, data, coder = None, invertor = False):
     if isinstance(data, io.IOBase):
       if isinstance(data, io.FileIO):
         data.Length = os.stat(data.name).st_size
@@ -177,28 +174,29 @@ class Wrapper:
       data.Length = L
     self.data = data
     if coder is not None: self.coder = coder
+    if invertor is not None: self.invertor = invertor
   def read(self):
     return self.data.read()
   def clone(self):
     data = self.data.read()
     self.data = data2 = io.BytesIO(data)
     data2.Length = len(data)
-    return Wrapper(data, self.coder)
+    return Wrapper(data, self.coder, self.invertor)
   def data2chain(self, coder = None):
     new = data2chain(self.data, self.coder if coder is None else coder)
-    self.__init__(new)
+    self.__init__(new, invertor = None)
     return self
   def chain2data(self, coder = None):
     new = chain2data(self.data, self.coder if coder is None else coder)
-    self.__init__(new)
+    self.__init__(new, invertor = None)
     return self
-  def ECB(self, coder = None, dec = False):
-    new = ECB(self.data, self.coder if coder is None else coder, dec)
-    self.__init__(new)
+  def ECB(self, coder = None, dec = False, invertor = None):
+    new = ECB(self.data, self.coder if coder is None else coder, dec, self.invertor if invertor is None else invertor)
+    self.__init__(new, invertor = None)
     return self
-  def CBC(self, impurity, coder = None, dec = False):
-    new = CBC(self.data, impurity, self.coder if coder is None else coder, dec)
-    self.__init__(new)
+  def CBC(self, impurity, coder = None, dec = False, invertor = None):
+    new = CBC(self.data, impurity, self.coder if coder is None else coder, dec, self.invertor if invertor is None else invertor)
+    self.__init__(new, invertor = None)
     return self
   def save(self, name, chunkL = 1024):
     data = self.data
@@ -258,57 +256,60 @@ def tests():
 
 
 
-coder = RSAkey().load("keys/RSA64.key").coder(2, b"\1")
-coder2 = RSAkey().load("keys/RSA1024.key").coder(2, b"\2")
-coder3 = ShamirKey().load("keys/Shamir64.key").coder(2, b"\3")
-coder4 = ShamirKey().load("keys/Shamir1024.key").coder(2, b"\4")
-coder5 = GVkey().load("keys/GV64.key").coder(2, b"\5")
-coder6 = GVkey().load("keys/GV1024.key").coder(2, b"\6")
-coder7 = ElGamalKey().load("keys/ElGamal64.key").coder(2, b"\5")
-coder8 = ElGamalKey().load("keys/ElGamal1024.key").coder(2, b"\6")
+def checker():
+  coder = RSAkey().load("keys/RSA64.key").coder(2, b"\1")
+  coder2 = RSAkey().load("keys/RSA1024.key").coder(2, b"\2")
+  coder3 = ShamirKey().load("keys/Shamir64.key").coder(2, b"\3")
+  coder4 = ShamirKey().load("keys/Shamir1024.key").coder(2, b"\4")
+  coder5 = GVkey().load("keys/GV64.key").coder(2, b"\5")
+  coder6 = GVkey().load("keys/GV1024.key").coder(2, b"\6")
+  coder7 = ElGamalKey().load("keys/ElGamal64.key").coder(2, b"\5")
+  coder8 = ElGamalKey().load("keys/ElGamal1024.key").coder(2, b"\6")
 
-for coder, name, name2, name3 in (
-  (coder, "img.jpg", "prod/RSA_imgA.enc", "prod/RSA_imgA_dec.jpg"),
-  (coder2, "img.jpg", "prod/RSA_imgB.enc", "prod/RSA_imgB_dec.jpg"),
-  (coder, "img2.jpg", "prod/RSA_img2A.enc", "prod/RSA_img2A_dec.jpg"),
-  (coder2, "img2.jpg", "prod/RSA_img2B.enc", "prod/RSA_img2B_dec.jpg"),
-  
-  (coder3, "img.jpg", "prod/Shamir_imgA.enc", "prod/Shamir_imgA_dec.jpg"),
-  (coder4, "img.jpg", "prod/Shamir_imgB.enc", "prod/Shamir_imgB_dec.jpg"),
-  (coder3, "img2.jpg", "prod/Shamir_img2A.enc", "prod/Shamir_img2A_dec.jpg"),
-  (coder4, "img2.jpg", "prod/Shamir_img2B.enc", "prod/Shamir_img2B_dec.jpg"),
-  
-  (coder5, "img.jpg", "prod/GV_imgA.enc", "prod/GV_imgA_dec.jpg"),
-  (coder6, "img.jpg", "prod/GV_imgB.enc", "prod/GV_imgB_dec.jpg"),
-  (coder5, "img2.jpg", "prod/GV_img2A.enc", "prod/GV_img2A_dec.jpg"),
-  (coder6, "img2.jpg", "prod/GV_img2B.enc", "prod/GV_img2B_dec.jpg"),
-  
-  (coder7, "img.jpg", "prod/ElGamal_imgA.enc", "prod/ElGamal_imgA_dec.jpg"),
-  (coder8, "img.jpg", "prod/ElGamal_imgB.enc", "prod/ElGamal_imgB_dec.jpg"),
-  (coder7, "img2.jpg", "prod/ElGamal_img2A.enc", "prod/ElGamal_img2A_dec.jpg"),
-  (coder8, "img2.jpg", "prod/ElGamal_img2B.enc", "prod/ElGamal_img2B_dec.jpg"),
-):
-  GV = name2.startswith("prod/GV")
-  if GV: coder[-1].reset()
+  for coder, name, name2, name3 in (
+    (coder, "img.jpg", "prod/RSA_imgA.enc", "prod/RSA_imgA_dec.jpg"),
+    (coder2, "img.jpg", "prod/RSA_imgB.enc", "prod/RSA_imgB_dec.jpg"),
+    (coder, "img2.jpg", "prod/RSA_img2A.enc", "prod/RSA_img2A_dec.jpg"),
+    (coder2, "img2.jpg", "prod/RSA_img2B.enc", "prod/RSA_img2B_dec.jpg"),
+    
+    (coder3, "img.jpg", "prod/Shamir_imgA.enc", "prod/Shamir_imgA_dec.jpg"),
+    (coder4, "img.jpg", "prod/Shamir_imgB.enc", "prod/Shamir_imgB_dec.jpg"),
+    (coder3, "img2.jpg", "prod/Shamir_img2A.enc", "prod/Shamir_img2A_dec.jpg"),
+    (coder4, "img2.jpg", "prod/Shamir_img2B.enc", "prod/Shamir_img2B_dec.jpg"),
+    
+    (coder5, "img.jpg", "prod/GV_imgA.enc", "prod/GV_imgA_dec.jpg"),
+    (coder6, "img.jpg", "prod/GV_imgB.enc", "prod/GV_imgB_dec.jpg"),
+    (coder5, "img2.jpg", "prod/GV_img2A.enc", "prod/GV_img2A_dec.jpg"),
+    (coder6, "img2.jpg", "prod/GV_img2B.enc", "prod/GV_img2B_dec.jpg"),
+    
+    (coder7, "img.jpg", "prod/ElGamal_imgA.enc", "prod/ElGamal_imgA_dec.jpg"),
+    (coder8, "img.jpg", "prod/ElGamal_imgB.enc", "prod/ElGamal_imgB_dec.jpg"),
+    (coder7, "img2.jpg", "prod/ElGamal_img2A.enc", "prod/ElGamal_img2A_dec.jpg"),
+    (coder8, "img2.jpg", "prod/ElGamal_img2B.enc", "prod/ElGamal_img2B_dec.jpg"),
+  ):
+    GV = name2.startswith("prod/GV")
+    if GV: coder[7].reset()
 
-  print(name, name2, name3)
-  start = time()
-  with open(name, "rb") as file:
-    if GV: wr = Wrapper(file, coder).data2chain().CBC(987654321)
-    else: wr = Wrapper(file, coder).data2chain().ECB().CBC(123456789)
-    print("file tell:", file.tell()) # 0 ;'-}
-    wr.save(name2)
-    print("file tell:", file.tell(), time() - start, "s.")
+    print(name, name2, name3)
+    start = time()
+    with open(name, "rb") as file:
+      if GV: wr = Wrapper(file, coder).data2chain().CBC(987654321)
+      else: wr = Wrapper(file, coder).data2chain().ECB().CBC(123456789)
+      print("file tell:", file.tell()) # 0 ;'-}
+      wr.save(name2)
+      print("file tell:", file.tell(), time() - start, "s.")
 
-  start = time()
-  with open(name2, "rb") as file:
-    if GV: wr = Wrapper(file, coder).CBC(987654321, dec = True).chain2data()
-    else: wr = Wrapper(file, coder).CBC(123456789, dec = True).ECB(dec = True).chain2data()
-    print("file tell:", file.tell()) # 0 ;'-}
-    wr.save(name3)
-    print("file tell:", file.tell(), time() - start, "s.")
-  if GV: print("Counters:", coder[-1].encC, coder[-1].decC) 
-  print("~" * 77)
+    start = time()
+    with open(name2, "rb") as file:
+      if GV: wr = Wrapper(file, coder).CBC(987654321, dec = True).chain2data()
+      else: wr = Wrapper(file, coder).CBC(123456789, dec = True).ECB(dec = True).chain2data()
+      print("file tell:", file.tell()) # 0 ;'-}
+      wr.save(name3)
+      print("file tell:", file.tell(), time() - start, "s.")
+    if GV: print("Counters:", coder[-1].encC, coder[-1].decC) 
+    print("~" * 77)
+
+if __name__ == "__main__": checker()
 
 """
 data = io.BytesIO(bytes(range(100)))
