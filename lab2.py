@@ -14,6 +14,11 @@ def coprimeGen(p):
         d = invertor(c, p - 1)
         if d is not None and c * d % (p - 1) == 1: return c, d
 
+def getCoprime(p):
+    while True:
+        d = randint(2, p - 1)
+        if Euclid(p, d) == 1: return d
+
 def ShamirAB():
     p = primeGen(100)
     print("p:", p)
