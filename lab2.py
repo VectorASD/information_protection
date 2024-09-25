@@ -226,8 +226,8 @@ def testElGamalKey():
     sk2 = ElGamalKey().load("keys/ElGamal1024.key")
     assert sk == sk2, "Ошибка сериализации/десериализации"
     msg = randint(0, sk2.p - 1)
-    print(msg, "|", sk2.dec(sk.enc(msg)))
-    assert msg == sk.dec(sk2.enc(msg)), "Проблемы кодирования/декодирования"
+    print(msg, "|", sk2.dec(*sk.enc(msg, None))[0])
+    assert msg == sk.dec(*sk2.enc(msg, None))[0], "Проблемы кодирования/декодирования"
 
 
 
