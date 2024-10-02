@@ -17,38 +17,49 @@ class Server:
 
         key = RSAkey().load("keys/RSA1024.key")
         self.n, self.exp, self.d = key.n, key.exp, key.d
-        self.r = getCoprime(self.n)
 
         self.names = set()
         self.blanks = []
+        self.name2num = {}
         print("Готов к приёму голосов!")
 
     def getChoices(self):
         return self.choices
     def getPubKey(self):
-        return self.n, self.exp, self.r
+        return self.n, self.exp
 
     def sendVote(self, name, num, sign):
         if name in self.names: return f'{name}, не хитри'
         self.names.add(name)
-        self.blanks.append((name, num, sign))
+
+        _s = mypow(sign, self.d, self.n)
+        self.name2num[name] = num
+        return _s
+
+    def sendVote2(self, name, s):
+        self.blanks.append((name, s))
         return "Голос на рассмотрении"
 
     def calcBlanks(self):
         print("Голосование окончено, сервер отключён от глобальной сети")
         # Допустим, только сейчас стало доступно приватное число (self.d), для безопасности
-        n, pub, priv = self.n, self.exp, self.d
+        n, pub = self.n, self.exp
 
         counter = {v: 0 for v in self.choices.values()}
-        for name, num, sign in self.blanks:
-            _s = mypow(sign, priv, n)
-            inv = Euclid_2(self.r, n)[1] % n
-            s = _s * inv % n
+        S = 0
+        names = set()
+        for name, s in self.blanks:
+            if name in names:
+                print(f"Голос '{name}' отклонен из-за повторяющегося имени")
+                continue
+            names.add(name)
 
+            num = self.name2num[name]
             hash, expected = hasher(num), mypow(s, pub, n)
             if hash == expected:
                 print(f"Голос '{name}' принят:", self.choicesR[num & 3])
                 counter[num & 3] += 1
+                S += 1
             else:
                 print(f"Голос '{name}' отклонен")
                 print("\nhash:", hash)
@@ -56,7 +67,7 @@ class Server:
                 print()
 
         print("\nПроголосовавшие:", *sorted(self.names))
-        print("\nРезультаты голосования:")
+        print("\nРезультаты голосования (всего %s):" % S)
         print("За: \t\t", counter[0])
         print("Против:\t\t", counter[1])
         print("Воздержались:\t", counter[2])
@@ -65,27 +76,34 @@ class Server:
 
 class Client:
     def __init__(self, S):
-        self.n, self.exp, self.r = S.getPubKey()
+        self.n, self.exp = S.getPubKey()
         self.choices = S.getChoices()
         self.choices2 = tuple(self.choices.keys())
         self.S = S
     def getChoices(self):
         return self.choices2
     def sign(self, choice):
-        n, exp, r = self.n, self.exp, self.r
+        n, exp = self.n, self.exp
         bits = 256
         num = randint(0, (1 << bits) - 1)
 
+        r = getCoprime(self.n)
         num = num << 2 | choice
         hash = hasher(num)
         sign = hash * mypow(r, exp, n) % n
-        return num, sign
+        return num, sign, r
+    def unsign(self, _s, r):
+        n = self.n
+        inv = Euclid_2(r, n)[1] % n
+        s = _s * inv % n
+        return s
     def vote(self, name, s):
         choice = self.choices[s]
-        num, sign = self.sign(choice)
-        return self.S.sendVote(name, num, sign)
-
-
+        num, sign, r = self.sign(choice)
+        _s = self.S.sendVote(name, num, sign)
+        if type(_s) is str: return _s
+        s = self.unsign(_s, r)
+        return self.S.sendVote2(name, s)
 
 if __name__ == '__main__':
     S = Server()
@@ -101,7 +119,9 @@ if __name__ == '__main__':
         # не имеет специализированного софта, хочет накрутить голоса от чужих имёт, либо ещё что-то
         victim = not randint(0, 7)
 
-        if victim: verdict = S.sendVote(name, 123, 1232312442213)
+        if victim:
+            verdict = S.sendVote(name, 123, 1232312442213)
+            if type(verdict) is int: verdict = S.sendVote2(name, verdict * 123)
         else: verdict = C.vote(name, c)
 
         print(f"'{name}' проголосовал {c} с вердиктом: {verdict}")
