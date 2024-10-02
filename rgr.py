@@ -3,16 +3,19 @@ from lab4 import keysGen
 from random import randint, sample, choice
 import pickle
 
-def _log(*a, **kw):
+def _log(lvl, *a, **kw):
     print(*a, **kw)
+def _log2(lvl, func): # второй уровень для особо тяжёлых выводов
+    _log(func())
 
 class Graph:
-    def gen(self, n, colors, MinAEP):
+    def gen(self, n, colors, MinAEP, MaxAEP):
         # MinAEP = Minimum Additional Edges in Percent
-        if not (type(n) is int and type(colors) is int and type(MinAEP) is int):
+        if not (type(n) is int and type(colors) is int and type(MinAEP) is int and type(MaxAEP) is int):
             raise TypeError("Неверные типы входных данных gen - генератора цветных правильных графов")
-        if not (n >= 5 and colors >= 2 and MinAEP in range(101)):
+        if not (n >= 5 and colors >= 2 and MinAEP in range(101) and MinAEP in range(101)):
             raise ValueError("Неверные входные данные gen - генератора цветных правильных графов")
+        if MinAEP > MaxAEP: MinAEP, MaxAEP = MaxAEP, MinAEP
 
         Vcolors = [None] * n # vertex colors
         indexes = sample(range(n), n)
@@ -41,25 +44,26 @@ class Graph:
         self.colors = colors
         self.Vcolors = tuple(Vcolors)
         self.source = f"gen({n}, {colors}, {MinAEP})"
-        _log(sorted(edges))
+        _log2(lambda: sorted(edges))
         _log(Vcolors)
 
-        if MinAEP: # при MinAEP == 0 нет смысла искать edges2, следовательно, и применять его
+        if MaxAEP: # при MaxAEP == 0 нет смысла искать edges2, следовательно, и применять его
             edges2 = []
             for L in range(n - 2):
                 for R in range(L + 1, n):
                     if (L, R) in edges: continue
                     if Vcolors[L] == Vcolors[R]: continue
                     edges2.append((L, R))
-            _log("max дополнительных рёбер (MaxAE):", len(edges2))
+            print("max дополнительных рёбер:", len(edges2))
             # КАЖДОЕ и хотябы одно ребро в edges2 уже ломает свойство дерева в edges,
             # не нарушая при этом правильность расраски
 
-            MinAE = len(edges2) * MinAEP // 100 # len(edges2) <-> MaxAE
-            AE = randint(MinAE, len(edges2))
-            _log(f"AE: {MinAE}..{len(edges2)} -> {AE}")
+            MinAE = len(edges2) * MinAEP // 100
+            MaxAE = len(edges2) * MaxAEP // 100
+            AE = randint(MinAE, MaxAE)
+            print(f"AE: {MinAE}..{MinAE} -> {AE}")
             edges.update(sample(edges2, AE)) # ;'-} просто одной строчкой
-            _log(sorted(edges))
+            _log2(lambda: sorted(edges))
             assert all(Vcolors[L] != Vcolors[R] for L, R in edges), "это НЕ правильный граф :/"
 
         assert all(L < R for L, R in edges), "во всех рёбрах, во избежание избыточности, L обязаны быть меньше R"
@@ -166,7 +170,7 @@ class Graph:
             reverse = tuple(mypow(color, priv, n) & mask2 for priv, color in zip(privs, encrypted))
             assert reverse == self.Vcolors, "Криптографическая ошибка :///"
 
-        publicData = encrypted, self.colors, mask2, self.edges
+        publicData = encrypted, self.colors, mask2, self.edges, n
         return publicData, privs
 
 def checkError(func):
@@ -177,7 +181,7 @@ def checkError(func):
     raise Exception("Нет исключения там, где должно быть")
 
 def tester():
-    graph = Graph().gen(20, 4, 10).save("graphs/first.txt")
+    graph = Graph().gen(20, 4, 10, 100).save("graphs/first.txt")
     checkError(lambda: Graph().save("error.txt"))
     checkError(lambda: graph.load(""))
 
@@ -204,4 +208,4 @@ def tester():
     print("publicData:", publicData)
     print("privs:", privs)
 
-tester()
+if __name__ == "__main__": tester()
