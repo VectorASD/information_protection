@@ -1,6 +1,10 @@
-from lab2 import RSAkey
+from lab1 import mypow
+from lab4 import keysGen
 from random import randint, sample, choice
 import pickle
+
+def _log(*a, **kw):
+    print(*a, **kw)
 
 class Graph:
     def gen(self, n, colors, MinAEP):
@@ -37,8 +41,8 @@ class Graph:
         self.colors = colors
         self.Vcolors = tuple(Vcolors)
         self.source = f"gen({n}, {colors}, {MinAEP})"
-        print(sorted(edges))
-        print(Vcolors)
+        _log(sorted(edges))
+        _log(Vcolors)
 
         if MinAEP: # при MinAEP == 0 нет смысла искать edges2, следовательно, и применять его
             edges2 = []
@@ -47,15 +51,15 @@ class Graph:
                     if (L, R) in edges: continue
                     if Vcolors[L] == Vcolors[R]: continue
                     edges2.append((L, R))
-            print("max дополнительных рёбер (MaxAE):", len(edges2))
+            _log("max дополнительных рёбер (MaxAE):", len(edges2))
             # КАЖДОЕ и хотябы одно ребро в edges2 уже ломает свойство дерева в edges,
             # не нарушая при этом правильность расраски
 
             MinAE = len(edges2) * MinAEP // 100 # len(edges2) <-> MaxAE
             AE = randint(MinAE, len(edges2))
-            print(f"AE: {MinAE}..{len(edges2)} -> {AE}")
+            _log(f"AE: {MinAE}..{len(edges2)} -> {AE}")
             edges.update(sample(edges2, AE)) # ;'-} просто одной строчкой
-            print(sorted(edges))
+            _log(sorted(edges))
             assert all(Vcolors[L] != Vcolors[R] for L, R in edges), "это НЕ правильный граф :/"
 
         assert all(L < R for L, R in edges), "во всех рёбрах, во избежание избыточности, L обязаны быть меньше R"
@@ -100,6 +104,7 @@ class Graph:
         assert colors >= 2, "должно быть, по крайней мере, 2 цвета"
         R = range(colors)
         assert all(color in R for color in Vcolors), "все цвета раскраски должны быть от 0 до colors-1"
+        assert len(Vcolors) == n, "цветов должно быть столько же, сколько и вершин"
 
     def print(self):
         print("~" * 77)
@@ -131,10 +136,43 @@ class Graph:
         self.check()
         return self
 
+    def permutation(self): # тот самый первый шаг из учебника
+        if not self.source.endswith("+permutation"): self.source += "+permutation"
+        colors = self.colors
+
+        vrtl = sample(range(colors), colors) # от слова virtual
+        assert len(set(vrtl)) == colors, "это НЕ перестановка :/"
+        _log("Перемешиватель:", vrtl)
+        _log("Раскраска:", self.Vcolors)
+        self.Vcolors = tuple(vrtl[color] for color in self.Vcolors)
+        _log("Раскраска:", self.Vcolors)
+        return self
+
+    def crypto(self, bits, check = True): # второй и третий шаги вместе взятые
+        n, pubs, privs = keysGen(self.Vcount, bits)
+        _log("pub:", pubs)
+        _log("priv:", privs)
+
+        bits = (self.colors - 1).bit_length()
+        max_bits = n.bit_length()
+        mask = (1 << max_bits) - (1 << bits) # ..., но так пишу впервые
+        mask2 = (1 << bits) - 1 # я миллиард раз так уже писал...
+
+        _log("mask:", bin(mask))
+        _log("mask2:", bin(mask2))
+        encrypted = tuple(mypow(randint(n // 2, n - 1) & mask | color, pub, n) for pub, color in zip(pubs, self.Vcolors))
+        _log("encrypted:", encrypted)
+        if check:
+            reverse = tuple(mypow(color, priv, n) & mask2 for priv, color in zip(privs, encrypted))
+            assert reverse == self.Vcolors, "Криптографическая ошибка :///"
+
+        publicData = encrypted, self.colors, mask2, self.edges
+        return publicData, privs
+
 def checkError(func):
     try: func()
     except Exception as e:
-        print("ok error:", e)
+        _log("ok error:", e)
         return
     raise Exception("Нет исключения там, где должно быть")
 
@@ -161,6 +199,9 @@ def tester():
     assert graph != graph3, "Проблемы в сравнителе графов"
     checkError(graph3.check)
 
-
+    graph.permutation()
+    publicData, privs = graph.crypto(64)
+    print("publicData:", publicData)
+    print("privs:", privs)
 
 tester()

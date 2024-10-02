@@ -37,28 +37,31 @@ def deckGen(letsShuffle):
     # "♥♦" - красные
     # "♣♠" - белые
 
-def keysGen(players, p1):
+def _keysGen(players, p1):
     coprimes, inverteds = [], []
     for i in range(players):
         while True:
             coprime = randint(2, p1 - 1)
             gcd, inverted = Euclid_2(coprime, p1)
             if gcd == 1: break
-        if inverted < 0: inverted += p1
+        #if inverted < 0: inverted += p1
+        inverted %= p1 # тоже самое, что и на предыдущей строчке
 
         if coprime > inverted: coprime, inverted = inverted, coprime # для большей криптостойкости
         coprimes.append(coprime)
         inverteds.append(inverted)
     return coprimes, inverteds
 
-def MentalPoker(players):
+def keysGen(count, bits = 64):
     while True:
-        q = primeGen(64)
+        q = primeGen(bits - 1)
         p = 2 * q + 1
         if primeTest(p): break
-    print("prime:", p)
+    pub, priv = _keysGen(count, p - 1)
+    return p, pub, priv
 
-    coprimes, inverteds = keysGen(players, p - 1)
+def MentalPoker(players):
+    p, coprimes, inverteds = keysGen(players)
     print("coprimes:", coprimes) # публичные ключи для шифрования
     print("inverteds:", inverteds) # приватные ключи для расшифровки
 
