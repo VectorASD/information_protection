@@ -10,6 +10,9 @@ def print(*arr, sep = " ", end = "\n"):
     bobLog.write(line)
 
 class Bob:
+    def __init__(self):
+        self.verdicts = []
+
     def connect(self, addr, port):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((addr, port))
@@ -51,7 +54,7 @@ class Bob:
     def brain(self, lvl, EiP, maxCount = 1000):
         # EiP - Edges in Percents
         assert type(lvl) is int and type(EiP) is int
-        assert lvl in range(5) and EiP in range(101)
+        assert lvl in range(15) and EiP in range(101)
 
         print("~" * 77)
         print("LEVEL:", lvl)
@@ -61,19 +64,32 @@ class Bob:
         if count > maxCount: count = maxCount # в рамках разумного
         print(f"Начинаю проверку {count} рёбер из {len(edges)} всех возможных")
 
-        for L, R in sample(tuple(edges), count):
+        for n, (L, R) in enumerate(sample(tuple(edges), count), 1):
             print("• рёбра:", L, R)
             L, R = self.getEdge(L, R)
             if L == R:
                 self.closeLevel("Алиса схитрила")
+                verdict = f"LEVEL: {lvl} -> Протестировано {n}/{count}(= 10%) рёбер. Алиса схитрила"
                 break
-        else: self.closeLevel("Алиса хорошая")
+        else:
+            self.closeLevel("Алиса хорошая")
+            verdict = f"LEVEL: {lvl} -> Протестировано {n}/{count}(= 10%) рёбер. Алиса хорошая"
+        self.verdicts.append(verdict)
 
         print("~" * 77)
         return self
 
-bob = Bob().connect("localhost", 54321).brain(0, 10)
-bob.brain(1, 10).brain(2, 10).brain(3, 10).brain(4, 10)
+bob = Bob().connect("localhost", 54321)
+for lvl in range(6): # тестируем первые 6 уровней по 5 раз для наглядности
+    for i in range(5): bob.brain(lvl, 10)
+    bob.verdicts.append("~~~")
+for lvl in range(6, 15): bob.brain(lvl, 10)
+#bob.brain(1, 10).brain(2, 10).brain(3, 10).brain(4, 10)
 bob.close()
+
+print("=" * 77)
+print("    Что скопилось в памяти Боба:")
+for verdict in bob.verdicts: print(verdict)
+print("=" * 77)
 
 bobLog.close()

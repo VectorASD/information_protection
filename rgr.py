@@ -3,9 +3,9 @@ from lab4 import keysGen
 from random import randint, sample, choice
 import pickle
 
-def _log(lvl, *a, **kw):
+def _log(*a, **kw):
     print(*a, **kw)
-def _log2(lvl, func): # второй уровень для особо тяжёлых выводов
+def _log2(func): # второй уровень для особо тяжёлых выводов
     _log(func())
 
 class Graph:
@@ -173,6 +173,48 @@ class Graph:
         publicData = encrypted, self.colors, mask2, self.edges, n
         return publicData, privs
 
+    def distortion(self, n = 5):
+        # создаёт копию графа, слегка порча раскраску
+        # n - количество случайных ВЕРШИН, а не рёбер, что будут испорчены
+        copy = Graph()
+        copy.source = self.source + f"+distortion({n})"
+        copy.Vcount = self.Vcount
+        copy.edges = edges = self.edges
+        copy.colors = self.colors
+
+        Vcolors = list(self.Vcolors)
+        for L, R in sample(tuple(edges), n):
+            Vcolors[L] = Vcolors[R] # тот самый момент, когда граф перестаёт быть правильным
+        copy.Vcolors = Vcolors = tuple(Vcolors)
+
+        corruptedEdges = sum(Vcolors[L] == Vcolors[R] for L, R in edges)
+        print(f"Количество испорченных рёбер (alg1): {corruptedEdges} / {len(edges)}")
+        return copy
+
+    def distortion2(self):
+        # создаёт копию графа, серьёзно порча раскраску, но не так, чтобы всё было в нулях
+        copy = Graph()
+        copy.source = self.source + "+distortion2"
+        copy.Vcount = self.Vcount
+        copy.edges = edges = self.edges
+        copy.colors = colors = self.colors
+
+        Vcolors = [0] * self.Vcount
+        colorsM2 = colors - 2
+        for L, R in edges:
+            Lclr, Rclr = Vcolors[L], Vcolors[R]
+            if Lclr == Rclr:
+                clr = randint(0, colorsM2)
+                if clr >= Lclr: clr += 1 # clr принадлежит [0; colors), но не равен Lclr
+                Vcolors[L] = clr # попытка разукрасить существующий некрашенный граф "в лоб"
+        copy.Vcolors = Vcolors = tuple(Vcolors)
+
+        corruptedEdges = sum(Vcolors[L] == Vcolors[R] for L, R in edges)
+        print(f"Количество испорченных рёбер (alg2): {corruptedEdges} / {len(edges)}")
+        return copy
+
+
+
 def checkError(func):
     try: func()
     except Exception as e:
@@ -181,7 +223,7 @@ def checkError(func):
     raise Exception("Нет исключения там, где должно быть")
 
 def tester():
-    graph = Graph().gen(20, 4, 10, 100).save("graphs/first.txt")
+    graph = Graph().gen(20, 4, 90, 100).save("graphs/first.txt")
     checkError(lambda: Graph().save("error.txt"))
     checkError(lambda: graph.load(""))
 
@@ -207,5 +249,22 @@ def tester():
     publicData, privs = graph.crypto(64)
     print("publicData:", publicData)
     print("privs:", privs)
+
+    graph.print()
+    graph4 = graph.distortion(graph.Vcount // 10)
+    graph4.print()
+    graph5 = graph.distortion2()
+    graph5.print()
+    """
+    Запуск 1:
+Количество испорченных рёбер (alg1): 12 / 137
+Количество испорченных рёбер (alg2): 29 / 131
+    Запуск 2:
+Количество испорченных рёбер (alg1): 10 / 131
+Количество испорченных рёбер (alg2): 56 / 108
+    Запуск 3:
+Количество испорченных рёбер (alg1): 4 / 37
+Количество испорченных рёбер (alg2): 2 / 37
+"""
 
 if __name__ == "__main__": tester()

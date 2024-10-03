@@ -47,7 +47,7 @@ def Euclid(a, b): # обычный
     while b: a, b = b, a % b
     return a
 
-def Euclid_2(a, b): # расширенный, но только с одним коэффициентами Безу
+def Euclid_2(a, b): # расширенный, но только с одним коэффициентом Безу
     ax, bx = 1, 0
     while b:
         q, mod = divmod(a, b)
@@ -134,7 +134,7 @@ def primeGen(nbits):
     min = (1 << nbits - 1) + 1
     max = (1 << nbits) - 1
     while True: # брутефорсим решение
-        odd = randint(min, max)
+        odd = randint(min, max) | 1
         if primeTest(odd): return odd
 
 #print(set(primeGen(2) for i in range(100))) # {3}

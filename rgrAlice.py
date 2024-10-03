@@ -14,7 +14,19 @@ class Alice:
         graphC = lambda: self.loadGraph(1000, 3, 50, 75)
         graphD = lambda: self.loadGraph(1000, 2, 100, 100)
         graphE = lambda: self.loadGraph(10000, 2, 10, 10)
-        self.base = graphA, graphB, graphC, graphD, graphE
+        self.base = (
+            graphA, lambda: graphA().distortion(), lambda: graphA().distortion2(),
+            graphB, lambda: graphB().distortion(), lambda: graphB().distortion2(),
+            graphC, lambda: graphC().distortion(), lambda: graphC().distortion2(),
+            graphD, lambda: graphD().distortion(), lambda: graphD().distortion2(),
+            graphE, lambda: graphE().distortion(), lambda: graphE().distortion2(),
+        )
+        # прямой вызов графов гарантирует, что даже если Боб простестирует все 100% рёбер, ничего не найдёт
+        # Боб тестирует только 10% рёбер, иначе при 100% он почти раскроет граф, тогда смысла в криптографии не будет
+        # функция с элементом distortion - лёгкая испорченность графа
+        #          (всего 5 вершин испорчено)
+        # функция с элементом distortion2 - сильная испорченность графа
+        #          (около половины рёбер испорчено, ИНОГДА выпадают все одноцветные, как повезёт)
         self.sessions = {}
         self.cache = {}
     def loadGraph(self, n, colors, MinAEP, MaxAEP):
@@ -32,29 +44,30 @@ class Alice:
             #print("pkl:", B - A)
             #print("txt:", C - B)
             """
-    lvl: 0
+    graphA: 0
 pkl: 0.0019989013671875
 txt: 0.0
-    lvl: 1
+    graphB: 1
 pkl: 0.003000974655151367
 txt: 0.0009989738464355469
-    lvl: 2
+    graphC: 2
 pkl: 0.1300029754638672
 txt: 0.2669987678527832
-    lvl: 3
+    graphD: 3
 pkl: 0.1430046558380127
 txt: 0.2819981575012207
-    lvl: 4
+    graphE: 4
 pkl: 1.396998405456543
 txt: 2.823002815246582
 
-Вывод очевиден: pickle медленнее на малых значениях (графах), зато быстрее на больших
+Вывод очевиден: pickle (pkl) медленнее на малых значениях (графах), зато быстрее на больших
 """
             print("• Из файла:", name)
         except FileNotFoundError:
             graph = Graph().gen(n, colors, MinAEP, MaxAEP).save(name + ".txt").save2(name + ".pkl")
             print("• Новый:", name)
 
+        graph.permutation()
         self.cache[name] = graph
         return graph
     def getGraph(self, lvl, bits):
@@ -77,7 +90,7 @@ txt: 2.823002815246582
             if type(data) is int:
                 assert uuid is None, "aй-яй-яй, Боб" # защита от перегрузки сессий
                 lvl = data
-                bits = (64, 64, 128, 256, 256)[lvl]
+                bits = (64, 64, 64, 64, 64, 64, 128, 128, 128, 256, 256, 256, 256, 256, 256)[lvl]
                 uuid, _ = resp = self.getGraph(lvl, bits)
                 pickle.dump(resp, sockfile)
                 sockfile.flush()
@@ -110,7 +123,7 @@ txt: 2.823002815246582
         print("server is up and rolled!")
         while True:
             conn, (ip, port) = sock.accept()
-            print("bob connected:", ip, port)
+            print("\nbob connected:", ip, port)
             Thread(target = self.handler, args = (conn,)).start()
 
 def check():
